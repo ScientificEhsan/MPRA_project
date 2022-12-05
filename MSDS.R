@@ -32,7 +32,8 @@ library(ensemblVEP)
 library(VariantAnnotation)
 
 library(utils)
-# install.packages('annovarR')      #--------no longer in CRAN-------#
+
+# install.packages('annovarR')      #--------no longer in CRAN VariantAnnotation used instead-------#
 # library(annovarR)
 
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
@@ -61,24 +62,28 @@ library(tidyverse)
 ### Specify directory/file ###############################################################################
 
 drt0 = "~/MPRA/UKBB_Cancer_Data/" #directory of data sets
-wDrt0 = paste(drt0, "Out20220824", sep = "") #not sure why we pasting but later creates an empty directory
 
-pThresh = 2     
+wDrt0 = paste(drt0, "Out20220824", sep = "") # stores output
+
+pThresh = 2      # intial read in filtering via pvalue can use smaller one-- need to make log transformed for database change
 saveSig = 1     
-runId = "20220824"   #not sure what that is
-pThreshAnno = log(1e-4) #initial 5e-8 but we are trying others
+runId = "20220824"   #keeps track if the analyses needs re run with different parameter
+pThreshAnno = log(1e-4) #initial 5e-8 but we are trying others like 1e-4
+
 
 
 ### Load data / initialize ###############################################################################
 
 dir.create(wDrt0,showWarnings = FALSE)
-# read_delim(gzfile(file.tsv.bgz), delim='\t') #added to read tsv.bgz files but not sure if this is what we doing
+
+# read_delim(gzfile(file.tsv.bgz), delim='\t') #if any particular file needs opening.
+
 
 # For liftover
 path = system.file(package = "liftOver", "extdata", "hg19ToHg38.over.chain") 
 ch = import.chain(path)
 
-# Load ClinVar------ Do we need ClinVar what SNP data set are we using here?#############
+# Load ClinVar------ClinVAR data- not used but can be extended for later analyses #############
 # drt1 = "I:\\Daniel\\Datasets\\SNPs\\"
 # file0 = "variant_summary_20220624.csv"
 # fID = paste(drt1, file0, sep = "")
@@ -112,7 +117,14 @@ ch = import.chain(path)
  # ii = is.element(clinVar0$ReviewStatus,c("criteria provided, single submitter","criteria provided, multiple submitters, no conflicts","practice guideline","criteria provided, conflicting interpretations","reviewed by expert panel") )
  # clinVar1 = clinVar0[ii,]
 
-# Read annotations
+
+# Read annotations ?How do I generate this
+
+
+###VariantAnnotation:VARIANT FUNCTION LOCATE 
+
+
+
 drt2 = "~/MPRA/UKBB_Cancer_Data/"
 file2 = "icd10-C50-both_sexes.tsv" #test with breastcancer file first 
 file2 = paste(drt2, file2, sep = "")
@@ -129,8 +141,6 @@ anno0 = read.table(file2, header = F, colClasses = cols,sep = "\t")
 ### Run (loop)--Pos + Meta P/Beta/AF with Liftover + Annotations ###############################################################################
 
 ###Get files
-
-
 allFiles = list.files(drt0)
 n = seq(from = 1,
         to = length(allFiles),
@@ -150,22 +160,24 @@ allFiles = allFiles[vOut]
 
 ###Full loop
 
-v00= c('coding','spliceSite','threeUTR','fiveUTR','intron','promoter','NonCoding')
+#v00= c('coding','spliceSite','threeUTR','fiveUTR','intron','promoter','NonCoding')
 
-nTotal = length(allFiles)
+nTotal = length(allFiles) 
 nFiles = seq(from = 1,
              to = nTotal,
              by = 1)
 
 
 
-# rm(list = c("vAllOut","vAllOut2"))
+# rm(list = c("vAllOut","vAllOut2")) ??
 for (i in nFiles) {
   
   file0 = allFiles[i] 
   
-  file00 = substr(file0, 1,nchar(file0) - 8)
-  file1 = paste(file00, "_hg38.tsv", sep = "")
+
+  file00 = substr(file0, 1,nchar(file0) - 8) #
+  file1 = paste(file00, "_hg38.tsv", sep = "") #file created from liftover to hg38 filtered by p-value
+
   file1 = paste(drt0, file1, sep = "")
   print(paste(i,"of",nTotal, file00))
   if (!file.exists(file1)){
@@ -185,6 +197,8 @@ for (i in nFiles) {
     cols[2] = "numeric"
     cols[c(1, 3, 4)] = "character"
     
+    #meta=all ethnicities, but not all disease had all ethnicities
+    
     v0 = any(stri_cmp_eq("pval_meta", headers0))
     if (any(stri_cmp_eq("pval_meta", headers0))) {
       cols[stri_cmp_eq("pval_meta", headers0)] = "numeric"
@@ -193,8 +207,9 @@ for (i in nFiles) {
       cols[stri_cmp_eq("af_controls_meta", headers0)] = "numeric"
       useMeta = 1
       
+      
     } else {
-      cols[stri_cmp_eq("pval_EUR", headers0)] = "numeric"
+      cols[stri_cmp_eq("pval_EUR", headers0)] = "numeric" #european used for diseases that did not have all ethnicity data
       cols[stri_cmp_eq("beta_EUR", headers0)] = "numeric"
       cols[stri_cmp_eq("af_cases_EUR", headers0)] = "numeric"
       cols[stri_cmp_eq("af_controls_EUR", headers0)] = "numeric"
@@ -209,7 +224,7 @@ for (i in nFiles) {
     dat0 = read.table(fID, header = T, colClasses = cols)
     
     
-    # Retain if P-value exists
+    # Retain if P-value exists removing ones that dont have p values
     if (any(stri_cmp_eq("pval_meta", headers0))) {
       idcs =  !is.na(dat0$pval_meta)
     } else {
@@ -251,7 +266,7 @@ for (i in nFiles) {
     }
     
     
-    if (pThresh<1){
+    if (pThresh<1){ #need to change to log scale
       idcs = gr$pval<pThresh
       gr = gr[idcs,]
     }
@@ -283,7 +298,7 @@ for (i in nFiles) {
     
     
     # Export file as tsv
-    file1 = substr(file0, 1, nchar(file0) - 8)
+    file1 = substr(file0, 1, nchar(file0) - 8) #cuts of tail of name these are already lifted over files
     file1 = paste(file1, "_hg38.tsv", sep = "")
     file1 = paste(drt0, file1, sep = "")
     
@@ -303,7 +318,7 @@ for (i in nFiles) {
     cols = rep("NULL",  nColumns)
     cols[1] = "character"
     cols[2] = "character"
-    # cols[6] = "numeric"
+  #  cols[6] = "numeric" add effect size column/ beta/ column
     cols[8] = "numeric"
     
     gr = read.table(file1, header = T, colClasses = cols)
@@ -316,7 +331,7 @@ for (i in nFiles) {
   
   
   ii = gr$pval<pThreshAnno 
-  gr = gr[ii,]
+  gr = gr[ii,] #filtered for below threshold
   
   
   gr$pos = paste(gr$chr, gr$pos, sep = "_")
@@ -333,35 +348,39 @@ for (i in nFiles) {
                 sep = ',',
                 row.names = FALSE)
   }
-  v0 = anno0[ii,]$V2
-  v0 = c(v0,v00)
-  vS = table(v0)-1
-  vS = vS[c(1,6,7,2,3,5,4) ]
+  #can concatanate a disease column
   
-  
-  v0 = data.frame(
-    vS = as.factor(vS)
-  )
-  names(v0)[names(v0) == "vS"] <- file00
-  
-  # rm(vAllOut)
-  if (exists("vAllOut")){
-    vAllOut = cbind(vAllOut, v0)
-  }else{
-    vAllOut = v0
-  }
-  
-  
-  
-  file1 = paste("mergedAnnoCountsAll_",runId,".csv", sep = "")
-  file1 = paste(wDrt0, file1, sep = "")
-  
-  write.table(vAllOut,
-              file1,
-              quote = FALSE,
-              sep = ',',
-              row.names = TRUE)
-}  
+
+#   v0 = anno0[ii,]$V2
+#   v0 = c(v0,v00)
+#   vS = table(v0)-1
+#   vS = vS[c(1,6,7,2,3,5,4) ]
+#   
+#   
+#   v0 = data.frame(
+#     vS = as.factor(vS)
+#   )
+#   names(v0)[names(v0) == "vS"] <- file00
+#   
+#   # rm(vAllOut)
+#   if (exists("vAllOut")){
+#     vAllOut = cbind(vAllOut, v0)
+#   }else{
+#     vAllOut = v0
+#   }
+#   
+#   
+#   
+#   file1 = paste("mergedAnnoCountsAll_",runId,".csv", sep = "")
+#   file1 = paste(wDrt0, file1, sep = "")
+#   
+#   write.table(vAllOut,
+#               file1,
+#               quote = FALSE,
+#               sep = ',',
+#               row.names = TRUE)
+# }  
+
   
   
   # For ClinVar variants- https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/ 

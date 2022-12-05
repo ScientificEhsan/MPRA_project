@@ -32,6 +32,7 @@ library(ensemblVEP)
 library(VariantAnnotation)
 
 library(utils)
+
 # install.packages('annovarR')      #--------no longer in CRAN VariantAnnotation used instead-------#
 # library(annovarR)
 
@@ -61,6 +62,7 @@ library(tidyverse)
 ### Specify directory/file ###############################################################################
 
 drt0 = "~/MPRA/UKBB_Cancer_Data/" #directory of data sets
+
 wDrt0 = paste(drt0, "Out20220824", sep = "") # stores output
 
 pThresh = 2      # intial read in filtering via pvalue can use smaller one-- need to make log transformed for database change
@@ -69,10 +71,13 @@ runId = "20220824"   #keeps track if the analyses needs re run with different pa
 pThreshAnno = log(1e-4) #initial 5e-8 but we are trying others like 1e-4
 
 
+
 ### Load data / initialize ###############################################################################
 
 dir.create(wDrt0,showWarnings = FALSE)
+
 # read_delim(gzfile(file.tsv.bgz), delim='\t') #if any particular file needs opening.
+
 
 # For liftover
 path = system.file(package = "liftOver", "extdata", "hg19ToHg38.over.chain") 
@@ -112,10 +117,12 @@ ch = import.chain(path)
  # ii = is.element(clinVar0$ReviewStatus,c("criteria provided, single submitter","criteria provided, multiple submitters, no conflicts","practice guideline","criteria provided, conflicting interpretations","reviewed by expert panel") )
  # clinVar1 = clinVar0[ii,]
 
+
 # Read annotations ?How do I generate this
 
 
 ###VariantAnnotation:VARIANT FUNCTION LOCATE 
+
 
 
 drt2 = "~/MPRA/UKBB_Cancer_Data/"
@@ -167,8 +174,10 @@ for (i in nFiles) {
   
   file0 = allFiles[i] 
   
+
   file00 = substr(file0, 1,nchar(file0) - 8) #
   file1 = paste(file00, "_hg38.tsv", sep = "") #file created from liftover to hg38 filtered by p-value
+
   file1 = paste(drt0, file1, sep = "")
   print(paste(i,"of",nTotal, file00))
   if (!file.exists(file1)){
@@ -341,7 +350,7 @@ for (i in nFiles) {
   }
   #can concatanate a disease column
   
-  
+
 #   v0 = anno0[ii,]$V2
 #   v0 = c(v0,v00)
 #   vS = table(v0)-1
@@ -371,6 +380,7 @@ for (i in nFiles) {
 #               sep = ',',
 #               row.names = TRUE)
 # }  
+
   
   
   # For ClinVar variants- https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/ 
